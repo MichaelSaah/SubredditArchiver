@@ -1,6 +1,4 @@
 import praw, sys, re, json, time, os, logging, argparse, tarfile, shutil
-import pprint
-pp = pprint.PrettyPrinter(indent=4)
 from config import *
 
 # SymVer
@@ -161,7 +159,6 @@ def archive_submissions(subreddit, submissionDir):
         submission.comments.replace_more(limit=None)
         submissionObj["comments"] = []
         for comment in submission.comments.list():
-            pp.pprint(vars(comment))
             submissionObj["comments"].append({
                 "fullname": comment.fullname,
                 "is_root": comment.is_root,

@@ -1,4 +1,6 @@
 import praw, sys, re, json, time, os, logging, argparse, tarfile, shutil
+import pprint
+pp = pprint.PrettyPrinter(indent=4)
 from config import *
 
 # SymVer
@@ -156,6 +158,37 @@ def archive_submissions(subreddit, submissionDir):
             "upvote_ratio": submission.upvote_ratio,
             "url": submission.url
         }
+        submission.comments.replace_more(limit=None)
+        submissionObj["comments"] = []
+        for comment in submission.comments.list():
+            pp.pprint(vars(comment))
+            submissionObj["comments"].append({
+                "fullname": comment.fullname,
+                "is_root": comment.is_root,
+                "parent": comment.parent().fullname,
+                "submission": comment.submission.fullname,
+                "author": comment.author.name,
+                "submission": comment.submission.id,
+                "body": comment.body,
+                "can_mod_post": comment.can_mod_post,
+                "controversiality": comment.controversiality,
+                "created": comment.created,
+                "created_utc": comment.created_utc,
+                "depth": comment.depth,
+                "downs": comment.downs,
+                "edited": comment.edited,
+                "gilded": comment.gilded,
+                "id": comment.id,
+                "is_submitter": comment.is_submitter,
+                "name": comment.name,
+                "no_follow": comment.no_follow,
+                "num_reports": comment.num_reports,
+                "parent_id": comment.parent_id,
+                "score": comment.score,
+                "ups": comment.ups,
+                "score_hidden": comment.score_hidden,
+                "stickied": comment.stickied
+            })
         if hasattr(submission, 'post_hint'):
             submissionObj["post_hint"] = submission.post_hint
         if hasattr(submission, 'preview'):

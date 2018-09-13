@@ -97,6 +97,9 @@ def archive_submissions(subreddit, submissionDir):
         logging.info("Processing Submission: " + submission.id)
         print(submission.id)
         count+=1
+
+        # rework this section with list of desired attributes for submissions and comments
+        # process by checking for attribute, adding if found
         submissionObj = {
             "id": submission.id,
             "shortlink": submission.shortlink,
@@ -159,7 +162,7 @@ def archive_submissions(subreddit, submissionDir):
         submission.comments.replace_more(limit=None)
         submissionObj["comments"] = []
         for comment in submission.comments.list():
-            submissionObj["comments"].append({
+        submissionObj["comments"].append({
                 "fullname": comment.fullname,
                 "is_root": comment.is_root,
                 "parent": comment.parent().fullname,
@@ -185,7 +188,7 @@ def archive_submissions(subreddit, submissionDir):
                 "ups": comment.ups,
                 "score_hidden": comment.score_hidden,
                 "stickied": comment.stickied
-            })
+        })
         if hasattr(submission, 'post_hint'):
             submissionObj["post_hint"] = submission.post_hint
         if hasattr(submission, 'preview'):

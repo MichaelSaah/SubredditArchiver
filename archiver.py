@@ -93,7 +93,7 @@ def archive_submissions(subreddit, submissionDir):
     count = 0
     if not os.path.isdir(submissionDir):
         os.makedirs(submissionDir)
-    for submission in subreddit.submissions():
+    for submission in subreddit.top('all'):
         logging.info("Processing Submission: " + submission.id)
         print(submission.id)
         count+=1
@@ -111,7 +111,7 @@ def archive_submissions(subreddit, submissionDir):
                 }
             },
             "banned_by": submission.banned_by,
-            "brand_safe": submission.brand_safe,
+            #"brand_safe": submission.brand_safe,
             "contest_mode": submission.contest_mode,
             "created": submission.created,
             "created_utc": submission.created_utc,

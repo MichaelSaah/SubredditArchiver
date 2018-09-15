@@ -98,101 +98,107 @@ def archive_submissions(subreddit, submissionDir):
         print(submission.id)
         count+=1
 
-        # rework this section with list of desired attributes for submissions and comments
-        # process by checking for attribute, adding if found
-        submissionObj = {
-            "id": submission.id,
-            "shortlink": submission.shortlink,
-            "fullname": submission.fullname,
-            "approved_by": submission.approved_by,
-            "archived": submission.archived,
-            "author": {
-                "name": submission.author.name,
-                "flair": {
-                    "css_class": submission.author_flair_css_class,
-                    "text": submission.author_flair_text
-                }
-            },
-            "banned_by": submission.banned_by,
-            #"brand_safe": submission.brand_safe,
-            "contest_mode": submission.contest_mode,
-            "created": submission.created,
-            "created_utc": submission.created_utc,
-            "distinguished": submission.distinguished,
-            "domain": submission.domain,
-            "downs": submission.downs,
-            "edited": submission.edited,
-            "gilded": submission.gilded,
-            "hidden": submission.hidden,
-            "is_self": submission.is_self,
-            "likes": submission.likes,
-            "flair": {
-                "css_class": submission.link_flair_css_class,
-                "text": submission.link_flair_text
-            },
-            "locked": submission.locked,
-            "media": submission.media,
-            "media_embed": submission.media_embed,
-            "name": submission.name,
-            "num_comments": submission.num_comments,
-            "num_reports": submission.num_reports,
-            "over_18": submission.over_18,
-            "permalink": submission.permalink,
-            "quarantine": submission.quarantine,
-            "removal_reason": submission.removal_reason,
-            "score": submission.score,
-            "secure_media": submission.secure_media,
-            "secure_media_embed": submission.secure_media_embed,
-            "selftext": submission.selftext,
-            "selftext_html": submission.selftext_html,
-            "spoiler": submission.spoiler,
-            "stickied": submission.stickied,
-            "subreddit": {
-                # "name": submission.subreddit,
-                "name_prefixed": submission.subreddit_name_prefixed,
-                "type": submission.subreddit_type,
-                "id": submission.subreddit_id,
-            },
-            "thumbnail": submission.thumbnail,
-            "title": submission.title,
-            "ups": submission.ups,
-            "upvote_ratio": submission.upvote_ratio,
-            "url": submission.url
-        }
+        submission_attrs = [
+            "id",
+            "shortlink",
+            "fullname",
+            "approved_by",
+            "archived",
+            "author.name",
+            "author_flair_text",
+            "banned_by",
+            "contest_mode",
+            "created",
+            "created_utc",
+            "distinguished",
+            "domain",
+            "downs",
+            "edited",
+            "gilded",
+            "hidden",
+            "is_self",
+            "likes",
+            "locked",
+            "media",
+            "media_embed",
+            "name",
+            "num_comments",
+            "num_reports",
+            "over_18",
+            "permalink",
+            "quarantine",
+            "removal_reason",
+            "score",
+            "secure_media",
+            "secure_media_embed",
+            "selftext",
+            "selftext_html",
+            "spoiler",
+            "stickied",
+            "subreddit_name_prefixed",
+            "subreddit_type",
+            "subreddit_id",
+            "thumbnail",
+            "title",
+            "ups",
+            "upvote_ratio",
+            "url",
+            "post_hint",
+            "preview"
+        ]
+
+        submissionObj = dict()
+        for a in submission_attrs:
+            if '.' in a: # only handles one level of depth, need to alter if you need more
+                parent,child = a.split('.')
+                if hasattr(submission, parent) and hasattr(getattr(submission, parent), child):
+                    name = parent + '_' + child
+                    submissionObj[name] = getattr(getattr(submission, parent), child)
+            else:
+                if hasattr(submission, a):
+                    submissionObj[a] = getattr(submission, a)
+
+        comment_attrs = [
+            "fullname",
+            "is_root",
+            "author.name",
+            "submission.id",
+            "body",
+            "can_mod_post",
+            "controversiality",
+            "created",
+            "created_utc",
+            "depth",
+            "downs",
+            "edited",
+            "gilded",
+            "id",
+            "is_submitter",
+            "name",
+            "no_follow",
+            "num_reports",
+            "parent_id",
+            "score",
+            "ups",
+            "score_hidden",
+            "stickied"
+        ]
+
         submission.comments.replace_more(limit=None)
         submissionObj["comments"] = []
         for comment in submission.comments.list():
-        submissionObj["comments"].append({
-                "fullname": comment.fullname,
-                "is_root": comment.is_root,
-                "parent": comment.parent().fullname,
-                "submission": comment.submission.fullname,
-                "author": comment.author.name,
-                "submission": comment.submission.id,
-                "body": comment.body,
-                "can_mod_post": comment.can_mod_post,
-                "controversiality": comment.controversiality,
-                "created": comment.created,
-                "created_utc": comment.created_utc,
-                "depth": comment.depth,
-                "downs": comment.downs,
-                "edited": comment.edited,
-                "gilded": comment.gilded,
-                "id": comment.id,
-                "is_submitter": comment.is_submitter,
-                "name": comment.name,
-                "no_follow": comment.no_follow,
-                "num_reports": comment.num_reports,
-                "parent_id": comment.parent_id,
-                "score": comment.score,
-                "ups": comment.ups,
-                "score_hidden": comment.score_hidden,
-                "stickied": comment.stickied
-        })
-        if hasattr(submission, 'post_hint'):
-            submissionObj["post_hint"] = submission.post_hint
-        if hasattr(submission, 'preview'):
-            submissionObj["preview"] = submission.preview
+            commentObj = dict()
+            for a in comment_attrs:
+                if '.' in a: # only handles one level of depth, need to alter if you need more
+                    parent,child = a.split('.')
+                    if hasattr(comment, parent) and hasattr(getattr(comment, parent), child):
+                        name = parent + '_' + child
+                        commentObj[name] = getattr(getattr(comment, parent), child)
+                else:
+                    if hasattr(comment, a):
+                        commentObj[a] = getattr(comment, a)
+            submissionObj["comments"].append(commentObj)
+
         with open(os.path.join(submissionDir, '.'.join([submission.id, "json"])), "w") as submissionFileHandler:
             submissionFileHandler.write(json.dumps(submissionObj))
     logging.info("Finished processing {0} submissions".format(count))

@@ -15,7 +15,7 @@ def usage():
 
 def cli_arguments():
     """ Process the command line arguments """
-    global subredditName, OUTPUT_BASE, args
+    global OUTPUT_BASE
     parser = argparse.ArgumentParser(description='Archive the contents of a reddit subreddit.')
     parser.add_argument('subreddit', metavar='subreddit', type=str,
                         help='the subreddit name')
@@ -33,18 +33,20 @@ def cli_arguments():
                         help='don\t compress the output')
     parser.add_argument('--keep', dest='keep', action='store_const', const=True, default=False,
                         help='keep the raw directory after compressing')
+    parser.add_argument('--limit', dest='limit', default=100, type=int,
+                        help='the max number of submissions to archive')
+
 
     args = parser.parse_args()
 
     OUTPUT_BASE = args.OUTPUT_BASE
 
-    subredditName = re.sub(r'^\/?r\/?', "", str(args.subreddit))
     numeric_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(numeric_level, int):
         raise ValueError('Invalid log level: %s' % args.loglevel)
     logging.basicConfig(level=numeric_level)
 
-    return
+    return args
 
 
 def archive_wiki(subreddit, wikiDir, archiveRevisions = True):
@@ -65,24 +67,26 @@ def archive_wiki(subreddit, wikiDir, archiveRevisions = True):
             # for revision in wikipage.revisions():
             #     print(revision['page'])
             with open(pageFile+".md", "w") as pageFileHandler:
-                pageFileHandler.write(wikipage.content_md.encode('utf-8'))
+                pageFileHandler.write(wikipage.content_md)
                 pageFileHandler.close()
             if archiveRevisions:
                 for revision in wikipage.revisions():
                     logging.info("Processing Wiki Page: " + wikipage.name + " revision: " + revision['id'])
                     try:
                         with open('.'.join([pageFile, revision['id'], "md"]), "w") as pageRevisionFileHandler:
-                            pageRevisionFileHandler.write(revision['page'].content_md.encode('utf-8'))
+                            pageRevisionFileHandler.write(revision['page'].content_md)
                             pageRevisionFileHandler.close()
                         time.sleep(SLEEP_SEC)
                     except Exception as revisionException:
                         logging.error("Ran into an Exception processing wiki page " + wikipage.name +
                               " revision " + revision['id'])
+                        print(revisionException)
         except Exception as pageException:
             logging.error("Ran into an Exception processing wiki page " + wikipage.name)
+            print(pageException)
 
 
-def archive_submissions(subreddit, submissionDir):
+def archive_submissions(subreddit, submissionDir, limit):
     """
     Archive a subreddit's submissions
     :param subreddit:
@@ -93,59 +97,60 @@ def archive_submissions(subreddit, submissionDir):
     count = 0
     if not os.path.isdir(submissionDir):
         os.makedirs(submissionDir)
-    for submission in subreddit.top('all'):
+
+    submission_attrs = [
+        "id",
+        "shortlink",
+        "fullname",
+        "approved_by",
+        "archived",
+        "author.name",
+        "author_flair_text",
+        "banned_by",
+        "contest_mode",
+        "created",
+        "created_utc",
+        "distinguished",
+        "domain",
+        "downs",
+        "edited",
+        "gilded",
+        "hidden",
+        "is_self",
+        "likes",
+        "locked",
+        "media",
+        "media_embed",
+        "name",
+        "num_comments",
+        "num_reports",
+        "over_18",
+        "permalink",
+        "quarantine",
+        "removal_reason",
+        "score",
+        "secure_media",
+        "secure_media_embed",
+        "selftext",
+        "selftext_html",
+        "spoiler",
+        "stickied",
+        "subreddit_name_prefixed",
+        "subreddit_type",
+        "subreddit_id",
+        "thumbnail",
+        "title",
+        "ups",
+        "upvote_ratio",
+        "url",
+        "post_hint",
+        "preview"
+    ]
+
+    for submission in subreddit.top('all',limit=limit):
         logging.info("Processing Submission: " + submission.id)
         print(submission.id)
         count+=1
-
-        submission_attrs = [
-            "id",
-            "shortlink",
-            "fullname",
-            "approved_by",
-            "archived",
-            "author.name",
-            "author_flair_text",
-            "banned_by",
-            "contest_mode",
-            "created",
-            "created_utc",
-            "distinguished",
-            "domain",
-            "downs",
-            "edited",
-            "gilded",
-            "hidden",
-            "is_self",
-            "likes",
-            "locked",
-            "media",
-            "media_embed",
-            "name",
-            "num_comments",
-            "num_reports",
-            "over_18",
-            "permalink",
-            "quarantine",
-            "removal_reason",
-            "score",
-            "secure_media",
-            "secure_media_embed",
-            "selftext",
-            "selftext_html",
-            "spoiler",
-            "stickied",
-            "subreddit_name_prefixed",
-            "subreddit_type",
-            "subreddit_id",
-            "thumbnail",
-            "title",
-            "ups",
-            "upvote_ratio",
-            "url",
-            "post_hint",
-            "preview"
-        ]
 
         submissionObj = dict()
         for a in submission_attrs:
@@ -265,18 +270,18 @@ def compress_archive(baseDir, startTime):
         logging.error("Something went wrong compressing the archive.")
     os.chdir(workingDir)
 
-cli_arguments()
-print("Archiving r/" + subredditName)
+args = cli_arguments()
+print("Archiving r/" + args.subreddit)
 
 reddit = praw.Reddit(client_id=CLIENT_ID,
                      client_secret=CLIENT_SECRET,
                      user_agent = "subreddit-archiver:v0.1 (by /u/chpwssn github.com/chpwssn)")
 reddit.read_only
-subreddit = reddit.subreddit(subredditName)
+subreddit = reddit.subreddit(args.subreddit)
 
 
 # Build Paths
-baseDir = os.path.abspath(os.path.join(OUTPUT_BASE, subredditName, str(startTime)))
+baseDir = os.path.abspath(os.path.join(OUTPUT_BASE, args.subreddit, str(startTime)))
 wikiDir = os.path.join(baseDir, "wiki")
 submissionDir = os.path.join(baseDir, "submissions")
 
@@ -290,7 +295,7 @@ archive_subreddit_information(subreddit, baseDir)
 
 # Get Submissions
 if args.submissions:
-    archive_submissions(subreddit, submissionDir)
+    archive_submissions(subreddit, submissionDir, args.limit)
 
 # Get Wiki Pages
 if args.wiki:
